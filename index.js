@@ -213,6 +213,12 @@ function decodePack(opts, repo, onEnd, read) {
     }
   }
 
+  function getRepoObject(repo, id, cb) {
+    // TODO: abstract this better
+    ;(repo.getObjectFromAny || repo.getObject).call(repo, id, cb)
+  }
+
+
   // TODO: test with ref-delta objects in pack
   function getObjectFromRefDelta(length, cb) {
     readHash(null, function (end, sourceHash) {
@@ -227,7 +233,7 @@ function decodePack(opts, repo, onEnd, read) {
           if (opts.verbosity >= 3)
             console.error('getting object', sourceHash)
           setTimeout(function () {
-            repo.getObject(sourceHash, function (err, sourceObject) {
+            getRepoObject(repo, sourceHash, function (err, sourceObject) {
               if (opts.verbosity >= 3)
                 console.error('got object', sourceHash, sourceObject, err)
               if (err) return cb(err)
