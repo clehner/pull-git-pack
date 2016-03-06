@@ -1,0 +1,31 @@
+{
+  "name": "pull-git-pack",
+  "version": "0.0.0",
+  "description": "encode and decode git packfiles",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clehner/pull-git-pack"
+  },
+  "keywords": [
+    "packfile"
+  ],
+  "author": "Charles Lehner (http://celehner.com/)",
+  "license": "Fair",
+  "bugs": {
+    "url": "https://github.com/clehner/pull-git-pack/issues"
+  },
+  "dependencies": {
+    "pako": "^0.2.8",
+    "pull-buffered": "^0.3.0",
+    "pull-cat": "^1.1.8",
+    "pull-stream": "^3.1.0",
+    "stream-to-pull-stream": "^1.6.6"
+  },
+  "devDependencies": {
+    "tape": "^4.4.0"
+  }
+}
