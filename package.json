@@ -1,6 +1,6 @@
 {
   "name": "pull-git-pack",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "encode and decode git packfiles",
   "main": "index.js",
   "scripts": {
