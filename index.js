@@ -232,18 +232,16 @@ function decodePack(opts, repo, onEnd, read) {
           if (err) return cb(err)
           if (opts.verbosity >= 3)
             console.error('getting object', sourceHash)
-          setTimeout(function () {
-            getRepoObject(repo, sourceHash, function (err, sourceObject) {
-              if (opts.verbosity >= 3)
-                console.error('got object', sourceHash, sourceObject, err)
-              if (err) return cb(err)
-              if (sourceObject.length != expectedSourceLength)
-                cb(new Error('Incorrect source object size in ref delta'))
-              else
-                patchObject(opts, b, length, sourceObject,
-                  expectedTargetLength, cb)
-            })
-          }, 50)
+          getRepoObject(repo, sourceHash, function (err, sourceObject) {
+            if (opts.verbosity >= 3)
+              console.error('got object', sourceHash, sourceObject, err)
+            if (err) return cb(err)
+            if (sourceObject.length != expectedSourceLength)
+              cb(new Error('Incorrect source object size in ref delta'))
+            else
+              patchObject(opts, b, length, sourceObject,
+                expectedTargetLength, cb)
+          })
         })
       })
     })
