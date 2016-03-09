@@ -4,8 +4,10 @@ var toPull = require('stream-to-pull-stream')
 var pako = require('pako')
 var createHash = require('./lib/util').createHash
 var cat = require('pull-cat')
+var zlib = require('zlib')
 
 exports.decode = decodePack
+exports.decodeObject = decodePackObject
 exports.encode = encodePack
 
 var PACK_VERSION = 2
@@ -146,36 +148,9 @@ function decodePack(opts, repo, onEnd, read) {
     })
   }
 
-  function readTypedVarInt(cb) {
-    var type, value, shift
-    readByte(null, function (end, buf) {
-      if (ended = end) return cb(end)
-      var firstByte = buf[0]
-      type = objectTypes[(firstByte >> 4) & 7]
-      value = firstByte & 15
-      shift = 4
-      checkByte(firstByte)
-    })
-
-    function checkByte(byte) {
-      if (byte & 0x80)
-        readByte(null, gotByte)
-      else
-        cb(null, type, value)
-    }
-
-    function gotByte(end, buf) {
-      if (ended = end) return cb(end)
-      var byte = buf[0]
-      value += (byte & 0x7f) << shift
-      shift += 7
-      checkByte(byte)
-    }
-  }
-
   function getObject(cb) {
     inObject = true
-    readTypedVarInt(function (end, type, length) {
+    readTypedVarInt(readByte, function (end, type, length) {
       if (opts.verbosity >= 2)
         console.error('read object header', end, type, length)
       numObjects--
@@ -212,12 +187,6 @@ function decodePack(opts, repo, onEnd, read) {
       })
     }
   }
-
-  function getRepoObject(repo, id, cb) {
-    // TODO: abstract this better
-    ;(repo.getObjectFromAny || repo.getObject).call(repo, id, cb)
-  }
-
 
   // TODO: test with ref-delta objects in pack
   function getObjectFromRefDelta(length, cb) {
@@ -289,6 +258,38 @@ function readVarInt(readByte, cb) {
     else
       cb(null, value)
   })
+}
+
+function readTypedVarInt(readByte, cb) {
+  var type, value, shift
+  readByte(null, function (end, buf) {
+    if (ended = end) return cb(end)
+    var firstByte = buf[0]
+    type = objectTypes[(firstByte >> 4) & 7]
+    value = firstByte & 15
+    shift = 4
+    checkByte(firstByte)
+  })
+
+  function checkByte(byte) {
+    if (byte & 0x80)
+      readByte(null, gotByte)
+    else
+      cb(null, type, value)
+  }
+
+  function gotByte(end, buf) {
+    if (ended = end) return cb(end)
+    var byte = buf[0]
+    value += (byte & 0x7f) << shift
+    shift += 7
+    checkByte(byte)
+  }
+}
+
+function getRepoObject(repo, id, cb) {
+  // TODO: abstract this better
+  ;(repo.getObjectFromAny || repo.getObject).call(repo, id, cb)
 }
 
 function patchObject(opts, deltaB, deltaLength, srcObject, targetLength, cb) {
@@ -431,3 +432,66 @@ function encodePack(opts, numObjects, readObject) {
   }
 }
 
+function decodePackObject(opts, repo, cb, read) {
+  if (read === undefined)
+    return decodePackObject.bind(this, opts, repo, cb)
+  opts = opts || {}
+
+  var b = buffered(read)
+  var readByte = b.chunks(1)
+  var readHash = b.chunks(20)
+
+  console.error('decode pack obj')
+  readTypedVarInt(readByte, function (end, type, length) {
+    console.error("byte", type, length)
+    if (opts.verbosity >= 2)
+      console.error('object', end || type, length)
+    if (end === true)
+      cb(new Error('Missing object type'))
+    else if (end)
+      cb(end)
+    else if (type == 'ref-delta')
+      getObjectFromRefDelta(length, cb)
+    else
+      cb(null, {
+        type: type,
+        length: length,
+        read: pull(
+          b.passthrough,
+          toPull(zlib.createInflate())
+        )
+      })
+  })
+
+  // TODO: test with ref-delta objects in pack
+  function getObjectFromRefDelta(length, cb) {
+    readHash(null, function (end, sourceHash) {
+      if (end) return cb(end)
+      sourceHash = sourceHash.toString('hex')
+      b = pull(
+        b.passthrough,
+        toPull(zlib.createInflate()),
+        buffered
+      )
+      var readInflatedByte = b.chunks(1)
+      readVarInt(readInflatedByte, function (err, expectedSourceLength) {
+        if (err) return cb(err)
+        readVarInt(readInflatedByte, function (err, expectedTargetLength) {
+          if (err) return cb(err)
+          if (opts.verbosity >= 3)
+            console.error('getting object', sourceHash)
+          getRepoObject(repo, sourceHash, function (err, sourceObject) {
+            if (opts.verbosity >= 3)
+              console.error('got object', sourceHash, sourceObject, err)
+            if (err) return cb(err)
+            if (sourceObject.length != expectedSourceLength)
+              cb(new Error('Incorrect source object size in ref delta'))
+            else
+              patchObject(opts, b, length, sourceObject,
+                expectedTargetLength, cb)
+          })
+        })
+      })
+    })
+  }
+}
