@@ -106,14 +106,24 @@ function decodePack(opts, repo, onEnd, read) {
   var ended
   var inObject = false
   var numObjects = -1
+  var offset = 0, objectOffset
   var checksum = createHash('sha1')
   var b = buffered(read)
-  var readByte = checksum(b.chunks(1))
-  var readWord = checksum(b.chunks(4))
-  var readHash = checksum(b.chunks(20))
+  var readByte = pull(b.chunks(1), track, checksum)
+  var readWord = pull(b.chunks(4), track, checksum)
+  var readHash = pull(b.chunks(20), track, checksum)
   var readChecksum = b.chunks(20)
   var expectChecksum = true
   var _cb
+
+  function track(read) {
+    return function (end, cb) {
+      read(end, function (end, data) {
+        offset += data && data.length
+        cb(end, data)
+      })
+    }
+  }
 
   function readHeader(cb) {
     readWord(null, function (end, header) {
@@ -150,6 +160,7 @@ function decodePack(opts, repo, onEnd, read) {
 
   function getObject(cb) {
     inObject = true
+    objectOffset = offset
     readTypedVarInt(readByte, function (end, type, length) {
       if (opts.verbosity >= 2)
         console.error('read object header', end, type, length)
@@ -174,6 +185,7 @@ function decodePack(opts, repo, onEnd, read) {
       cb(null, {
         type: obj.type,
         length: obj.length,
+        offset: objectOffset,
         read: pull(
           obj.read,
           pull.through(null, function () {

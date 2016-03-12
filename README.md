@@ -34,6 +34,7 @@ If `read` is not given, `pack.decode` returns a through stream.
 - `readObject`: readable stream of git objects in the format of [abstract-pull-git-repo][]
   - `object.type`: one of `["tag", "commit", "tree", "blob"]`
   - `object.length`: size in bytes of the object
+  - `object.offset`: offset of the object in the pack. for use with packidxs
   - `object.read(abort, next(end, buf))`: readable stream of data
 
 #### `pack.encode([opts, ]numObjects, readObject): read`
