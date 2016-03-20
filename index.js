@@ -453,9 +453,7 @@ function decodePackObject(opts, repo, cb, read) {
   var readByte = b.chunks(1)
   var readHash = b.chunks(20)
 
-  console.error('decode pack obj')
   readTypedVarInt(readByte, function (end, type, length) {
-    console.error("byte", type, length)
     if (opts.verbosity >= 2)
       console.error('object', end || type, length)
     if (end === true)
