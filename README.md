@@ -50,6 +50,20 @@ If `readObject` is not given, `pack.encode` returns a through stream.
 
 - `read(end, cb(end, data))`: readable stream of packfile data
 
+### Index Pack
+
+```js
+var indexPack = require('lib/pull-git-pack/index-pack')
+```
+
+#### `indexPack(packFile, cb(err, idx))`
+
+Build a pack index (.idx file) from a git pack file, as git-index-pack(1) would
+do.
+
+- `packFile`: readable stream of packfile data
+- `idx`: readable stream of pack index data
+
 [abstract-pull-git-repo]: https://github.com/clehner/abstract-pull-git-repo
 [pull-stream]: https://github.com/dominictarr/pull-stream/
 

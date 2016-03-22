@@ -4,7 +4,7 @@
   "description": "encode and decode git packfiles",
   "main": "index.js",
   "scripts": {
-    "test": "node test"
+    "test": "tape test/*.js"
   },
   "repository": {
     "type": "git",
